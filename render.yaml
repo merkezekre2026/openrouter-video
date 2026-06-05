@@ -9,7 +9,5 @@ services:
     envVars:
       - key: OPENROUTER_API_KEY
         sync: false      # Manually set in Render Dashboard (security)
-      - key: SITE_NAME
-        value: OpenRouter Video MCP
       - key: PYTHON_VERSION
         value: "3.11.0"

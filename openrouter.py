@@ -34,16 +34,12 @@ class OpenRouterError(Exception):
 class OpenRouterClient:
     """Async client to communicate with OpenRouter Video API."""
 
-    def __init__(self, api_key: str, site_url: str = "", site_name: str = ""):
+    def __init__(self, api_key: str):
         self.api_key = api_key
         self.headers = {
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
         }
-        if site_url:
-            self.headers["HTTP-Referer"] = site_url
-        if site_name:
-            self.headers["X-Title"] = site_name
 
     def _make_client(self) -> httpx.AsyncClient:
         return httpx.AsyncClient(

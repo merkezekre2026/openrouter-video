@@ -38,8 +38,6 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
-SITE_URL = os.environ.get("SITE_URL", "")
-SITE_NAME = os.environ.get("SITE_NAME", "OpenRouter Video MCP")
 HOST = os.environ.get("HOST", "0.0.0.0")
 PORT = int(os.environ.get("PORT", "8000"))  # Render.com automatically binds PORT
 
@@ -65,11 +63,7 @@ def _get_client() -> OpenRouterClient:
             "OPENROUTER_API_KEY environment variable is not set. "
             "Please configure it in your environment or Render dashboard."
         )
-    return OpenRouterClient(
-        api_key=OPENROUTER_API_KEY,
-        site_url=SITE_URL,
-        site_name=SITE_NAME,
-    )
+    return OpenRouterClient(api_key=OPENROUTER_API_KEY)
 
 
 # ---------------------------------------------------------------------------
