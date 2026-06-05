@@ -1,6 +1,6 @@
 """
-OpenRouter Video MCP Sunucusu – Streamable HTTP Transport
-Render.com'a dağıtım için optimize edilmiştir.
+OpenRouter Video MCP Server – Streamable HTTP Transport
+Optimized for deployment on platforms like Render.com.
 """
 from __future__ import annotations
 
@@ -27,7 +27,7 @@ from models import (
 from openrouter import OpenRouterClient, OpenRouterError
 
 # ---------------------------------------------------------------------------
-# Başlangıç ayarları
+# Initial configuration
 # ---------------------------------------------------------------------------
 load_dotenv()
 
@@ -41,29 +41,29 @@ OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
 SITE_URL = os.environ.get("SITE_URL", "https://openrouter-video-mcp.onrender.com")
 SITE_NAME = os.environ.get("SITE_NAME", "OpenRouter Video MCP")
 HOST = os.environ.get("HOST", "0.0.0.0")
-PORT = int(os.environ.get("PORT", "8000"))  # Render.com PORT'u otomatik atar
+PORT = int(os.environ.get("PORT", "8000"))  # Render.com automatically binds PORT
 
 # ---------------------------------------------------------------------------
-# FastMCP sunucusu
+# FastMCP Server Instance
 # ---------------------------------------------------------------------------
 mcp = FastMCP(
     name="openrouter-video-mcp",
     instructions=(
-        "Bu sunucu, OpenRouter üzerindeki video oluşturma modellerini kullanarak "
-        "yüksek kaliteli videolar üretmenizi sağlar. "
-        "Önce list_video_models ile mevcut modelleri öğrenin, "
-        "ardından generate_video ile video oluşturun. "
-        "Video üretimi asenkron çalışır; wait_for_video ile tamamlanmasını bekleyin."
+        "This server integrates OpenRouter's Video Generation APIs. "
+        "Use list_video_models to discover available models, "
+        "and generate_video to create video generation jobs. "
+        "Since video generation is asynchronous, use wait_for_video "
+        "or check_video_status to retrieve the completed URLs."
     ),
 )
 
 
 def _get_client() -> OpenRouterClient:
-    """Her araç çağrısında taze bir istemci oluşturur."""
+    """Helper to initialize the API client."""
     if not OPENROUTER_API_KEY:
         raise RuntimeError(
-            "OPENROUTER_API_KEY ortam değişkeni ayarlanmamış. "
-            "Render.com'da Environment Variables bölümüne ekleyin."
+            "OPENROUTER_API_KEY environment variable is not set. "
+            "Please configure it in your environment or Render dashboard."
         )
     return OpenRouterClient(
         api_key=OPENROUTER_API_KEY,
@@ -73,18 +73,18 @@ def _get_client() -> OpenRouterClient:
 
 
 # ---------------------------------------------------------------------------
-# MCP Araçları
+# MCP Tools
 # ---------------------------------------------------------------------------
 
 @mcp.tool(
     description=(
-        "OpenRouter üzerinde mevcut tüm video oluşturma modellerini listeler. "
-        "Hangi modelin kullanılabileceğini öğrenmek için bu aracı çalıştırın. "
-        "Örnek modeller: google/veo-3.1-fast, kwaivgi/kling-v3.0-pro, vb."
+        "Lists all available video generation models on OpenRouter. "
+        "Use this tool to find valid model IDs. Examples include: "
+        "google/veo-3.1-fast, kwaivgi/kling-v3.0-pro, etc."
     )
 )
 async def list_video_models() -> dict:
-    """Kullanılabilir video modellerini listeler."""
+    """List all supported video generation models."""
     client = _get_client()
     try:
         models = await client.list_video_models()
@@ -104,44 +104,42 @@ async def list_video_models() -> dict:
     except OpenRouterError as exc:
         return {"error": str(exc), "status_code": exc.status_code}
     except Exception as exc:
-        logger.exception("list_video_models hatası")
+        logger.exception("Error in list_video_models")
         return {"error": str(exc)}
 
 
 @mcp.tool(
     description=(
-        "Verilen prompt'a göre bir video oluşturma işi başlatır. "
-        "İşlem asenkron olduğu için hemen bir job_id döner. "
-        "Videonun tamamlanmasını beklemek için wait_for_video aracını kullanın. "
-        "Desteklenen modeller için list_video_models'i çalıştırın."
+        "Starts an asynchronous video generation job. "
+        "Returns a job_id instantly. Use wait_for_video to poll until "
+        "the final video output URLs are ready."
     )
 )
 async def generate_video(
-    prompt: Annotated[str, "Videonun nasıl olacağını açıklayan metin (İngilizce veya Türkçe)"],
-    model: Annotated[str, "Video modeli ID'si (örn: google/veo-3.1-fast)"] = "google/veo-3.1-fast",
+    prompt: Annotated[str, "Detailed description of the video to generate"],
+    model: Annotated[str, "Model ID (e.g., google/veo-3.1-fast)"] = "google/veo-3.1-fast",
     aspect_ratio: Annotated[
-        str, "En-boy oranı: '16:9' (yatay), '9:16' (dikey), '1:1' (kare)"
+        str, "Aspect ratio: '16:9' (landscape), '9:16' (portrait), '1:1' (square)"
     ] = "16:9",
     duration: Annotated[
-        Optional[int], "Video süresi (saniye, 1-60). Model destekliyorsa geçerlidir."
+        Optional[int], "Duration in seconds (1-60). Subject to model capabilities."
     ] = None,
     resolution: Annotated[
-        Optional[str], "Çözünürlük: '720p', '1080p', '4k'"
+        Optional[str], "Resolution profile: '720p', '1080p', or '4k'"
     ] = None,
-    generate_audio: Annotated[bool, "Ses oluşturulsun mu?"] = False,
+    generate_audio: Annotated[bool, "Whether to generate audio along with the video"] = False,
     image_url: Annotated[
         Optional[str],
-        "Image-to-video: başlangıç karesi olarak kullanılacak görsel URL'si veya base64 URI"
+        "Image-to-video source: Image URL or base64 data URI to use as the starting frame"
     ] = None,
     callback_url: Annotated[
         Optional[str],
-        "Video tamamlandığında POST isteği gönderilecek HTTPS webhook URL'si"
+        "Optional HTTPS endpoint to receive webhook notifications upon completion"
     ] = None,
 ) -> dict:
-    """Video oluşturma işi başlatır, job_id ve polling_url döner."""
+    """Trigger a video generation request and return job tracking metadata."""
     client = _get_client()
 
-    # Kare görseli varsa ekle
     frame_images = None
     if image_url:
         frame_images = [FrameImage(url=image_url, frame_type=FrameType.FIRST)]
@@ -166,30 +164,28 @@ async def generate_video(
             "prompt": prompt,
             "polling_url": job.polling_url,
             "message": (
-                f"Video oluşturma işi başlatıldı! "
-                f"job_id='{job.id}' ile durumu takip edebilirsiniz. "
-                f"Tamamlanmasını beklemek için wait_for_video('{job.id}') kullanın."
+                f"Video generation job successfully submitted! "
+                f"Use check_video_status('{job.id}') or wait_for_video('{job.id}') "
+                f"to monitor progress and retrieve the final video URLs."
             ),
         }
     except OpenRouterError as exc:
         return {"error": str(exc), "status_code": exc.status_code}
     except Exception as exc:
-        logger.exception("generate_video hatası")
+        logger.exception("Error in generate_video")
         return {"error": str(exc)}
 
 
 @mcp.tool(
     description=(
-        "Belirli bir video oluşturma işinin güncel durumunu kontrol eder. "
-        "Durumlar: pending (beklemede), processing (işleniyor), "
-        "completed (tamamlandı), failed (başarısız). "
-        "Tamamlandığında video URL'leri döner."
+        "Retrieves the status of a specific video generation job. "
+        "Status values: pending, processing, completed, failed."
     )
 )
 async def check_video_status(
-    job_id: Annotated[str, "generate_video tarafından döndürülen iş ID'si"],
+    job_id: Annotated[str, "The unique job identifier returned by generate_video"],
 ) -> dict:
-    """Bir video işinin durumunu sorgular."""
+    """Query current status of a video job."""
     client = _get_client()
     try:
         job = await client.get_video_status(job_id)
@@ -202,42 +198,40 @@ async def check_video_status(
         }
         if job.status == "completed" and job.unsigned_urls:
             result["video_urls"] = job.unsigned_urls
-            result["message"] = "Video hazır! Aşağıdaki URL'lerden indirebilirsiniz."
+            result["message"] = "Video is ready! Use the links below to download."
         elif job.status == "failed":
-            result["error"] = job.error or "Bilinmeyen hata"
+            result["error"] = job.error or "Unknown error occurred"
         elif job.status in ("pending", "processing"):
-            result["message"] = "Video henüz hazır değil. Biraz bekleyip tekrar kontrol edin."
+            result["message"] = "Video is still generating. Check back shortly."
         return result
     except OpenRouterError as exc:
         return {"error": str(exc), "status_code": exc.status_code}
     except Exception as exc:
-        logger.exception("check_video_status hatası")
+        logger.exception("Error in check_video_status")
         return {"error": str(exc)}
 
 
 @mcp.tool(
     description=(
-        "Video oluşturma işini tamamlanana kadar bekler ve bitince video URL'lerini döner. "
-        "Bu araç en fazla 10 dakika bekler. "
-        "Video oluşturma genellikle 30 saniye ile birkaç dakika arasında sürer. "
-        "Uzun bekleme sürelerine toleranslı olun."
+        "Blocks and polls until the video generation job is completed. "
+        "Default timeout is 10 minutes. Suitable for clients running workflows."
     )
 )
 async def wait_for_video(
-    job_id: Annotated[str, "generate_video tarafından döndürülen iş ID'si"],
+    job_id: Annotated[str, "The unique job identifier returned by generate_video"],
     poll_interval_seconds: Annotated[
         int,
-        "Kaç saniyede bir kontrol edilsin? (5-30 arasında önerilir, varsayılan: 8)"
+        "Polling interval in seconds (recommended: 5-30, default: 8)"
     ] = 8,
 ) -> dict:
-    """Video tamamlanana kadar bekler, tamamlandığında URL'leri döner."""
+    """Poll a job until completion, returning final video assets."""
     client = _get_client()
     try:
         poll_interval = max(3, min(poll_interval_seconds, 30))
         job = await client.wait_for_video(
             job_id,
             poll_interval=poll_interval,
-            max_attempts=int(600 / poll_interval),  # 10 dakika
+            max_attempts=int(600 / poll_interval),  # 10 minutes max
         )
         return {
             "job_id": job.id,
@@ -246,27 +240,24 @@ async def wait_for_video(
             "completed_at": job.completed_at,
             "video_urls": job.unsigned_urls or [],
             "message": (
-                f"Video başarıyla oluşturuldu! "
-                f"{len(job.unsigned_urls or [])} adet URL mevcut."
+                f"Video successfully generated! "
+                f"Found {len(job.unsigned_urls or [])} asset URL(s)."
             ),
         }
     except OpenRouterError as exc:
         return {"error": str(exc), "status_code": exc.status_code}
     except Exception as exc:
-        logger.exception("wait_for_video hatası")
+        logger.exception("Error in wait_for_video")
         return {"error": str(exc)}
 
 
 @mcp.tool(
-    description=(
-        "Hesabınızdaki son video oluşturma geçmişini listeler. "
-        "Her kaydın job_id'si, durumu ve varsa video URL'leri gösterilir."
-    )
+    description="Lists your recent video generation jobs history."
 )
 async def list_my_generations(
-    limit: Annotated[int, "Listenecek maksimum kayıt sayısı (1-100)"] = 20,
+    limit: Annotated[int, "Maximum items to return (1-100)"] = 20,
 ) -> dict:
-    """Son video oluşturma geçmişini listeler."""
+    """Retrieve history of video generation attempts."""
     client = _get_client()
     try:
         clamped_limit = max(1, min(limit, 100))
@@ -289,12 +280,12 @@ async def list_my_generations(
     except OpenRouterError as exc:
         return {"error": str(exc), "status_code": exc.status_code}
     except Exception as exc:
-        logger.exception("list_my_generations hatası")
+        logger.exception("Error in list_my_generations")
         return {"error": str(exc)}
 
 
 # ---------------------------------------------------------------------------
-# Sağlık kontrolü endpoint'i (Render.com için)
+# Health endpoint for Render.com active monitoring
 # ---------------------------------------------------------------------------
 async def health_check(request: Request) -> JSONResponse:
     return JSONResponse(
@@ -309,7 +300,7 @@ async def health_check(request: Request) -> JSONResponse:
 
 
 # ---------------------------------------------------------------------------
-# Starlette uygulaması – MCP + health endpoint birleşimi
+# Starlette Application Construction
 # ---------------------------------------------------------------------------
 def build_app() -> Starlette:
     mcp_app = mcp.http_app(path="/mcp")
@@ -327,13 +318,13 @@ def build_app() -> Starlette:
 app = build_app()
 
 # ---------------------------------------------------------------------------
-# Doğrudan çalıştırma (geliştirme ortamı)
+# Direct Entry Point for Development
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
-    logger.info("OpenRouter Video MCP sunucusu başlatılıyor...")
-    logger.info("Host: %s, Port: %d", HOST, PORT)
-    logger.info("MCP endpoint: http://%s:%d/mcp", HOST, PORT)
-    logger.info("Health check: http://%s:%d/health", HOST, PORT)
+    logger.info("Starting OpenRouter Video MCP server...")
+    logger.info("Binding to Host: %s, Port: %d", HOST, PORT)
+    logger.info("MCP Endpoint URL: http://%s:%d/mcp", HOST, PORT)
+    logger.info("Health Check URL: http://%s:%d/health", HOST, PORT)
 
     uvicorn.run(
         "server:app",

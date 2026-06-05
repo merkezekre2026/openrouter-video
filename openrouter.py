@@ -1,5 +1,5 @@
 """
-OpenRouter Video API İstemcisi
+OpenRouter Video API Client
 """
 from __future__ import annotations
 import asyncio
@@ -19,12 +19,12 @@ logger = logging.getLogger(__name__)
 
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 DEFAULT_TIMEOUT = 30.0
-POLL_INTERVAL = 5  # saniye
-MAX_POLL_ATTEMPTS = 120  # 10 dakika (120 × 5s)
+POLL_INTERVAL = 5  # seconds
+MAX_POLL_ATTEMPTS = 120  # 10 minutes (120 * 5s)
 
 
 class OpenRouterError(Exception):
-    """OpenRouter API hatası"""
+    """Exception raised for OpenRouter API errors"""
 
     def __init__(self, message: str, status_code: Optional[int] = None):
         super().__init__(message)
@@ -32,7 +32,7 @@ class OpenRouterError(Exception):
 
 
 class OpenRouterClient:
-    """OpenRouter Video API ile iletişim kuran asenkron istemci."""
+    """Async client to communicate with OpenRouter Video API."""
 
     def __init__(self, api_key: str, site_url: str = "", site_name: str = ""):
         self.api_key = api_key
@@ -51,13 +51,13 @@ class OpenRouterClient:
         )
 
     async def list_video_models(self) -> List[VideoModel]:
-        """Kullanılabilir video modellerini listeler."""
+        """List all available video generation models."""
         async with self._make_client() as client:
             response = await client.get("/videos/models")
             self._raise_for_status(response)
             data = response.json()
 
-            # OpenRouter'ın yanıt formatı: {"data": [...]} veya düz liste
+            # Handle format {"data": [...]} or raw list
             if isinstance(data, dict):
                 models_data = data.get("data", [])
             else:
@@ -66,8 +66,7 @@ class OpenRouterClient:
             return [VideoModel(**m) for m in models_data]
 
     async def generate_video(self, request: VideoGenerationRequest) -> VideoJob:
-        """Video oluşturma işi başlatır ve job bilgisini döner."""
-        # Sadece dolu alanları gönder
+        """Start a video generation job and return details."""
         payload = request.model_dump(exclude_none=True, mode="json")
 
         async with self._make_client() as client:
@@ -78,7 +77,7 @@ class OpenRouterClient:
         return VideoJob(**data)
 
     async def get_video_status(self, job_id: str) -> VideoJob:
-        """Belirtilen iş ID'sinin durumunu sorgular."""
+        """Retrieve the status of a specific generation job."""
         async with self._make_client() as client:
             response = await client.get(f"/videos/{job_id}")
             self._raise_for_status(response)
@@ -93,23 +92,23 @@ class OpenRouterClient:
         max_attempts: int = MAX_POLL_ATTEMPTS,
     ) -> VideoJob:
         """
-        Video tamamlanana (completed/failed) kadar yoklar.
-        Her poll_interval saniyede bir kontrol eder.
+        Poll until the video generation job is completed or failed.
+        Checks every poll_interval seconds.
         """
         for attempt in range(max_attempts):
             job = await self.get_video_status(job_id)
 
             if job.status == VideoStatus.COMPLETED:
-                logger.info("Video tamamlandı: %s", job_id)
+                logger.info("Video generation completed: %s", job_id)
                 return job
 
             if job.status == VideoStatus.FAILED:
                 raise OpenRouterError(
-                    f"Video oluşturma başarısız: {job.error or 'Bilinmeyen hata'}",
+                    f"Video generation failed: {job.error or 'Unknown error'}",
                 )
 
             logger.debug(
-                "Video bekleniyor (%s/%s): job_id=%s status=%s",
+                "Waiting for video (%s/%s): job_id=%s status=%s",
                 attempt + 1,
                 max_attempts,
                 job_id,
@@ -118,11 +117,11 @@ class OpenRouterClient:
             await asyncio.sleep(poll_interval)
 
         raise OpenRouterError(
-            f"Video {max_attempts * poll_interval} saniye içinde tamamlanamadı: {job_id}"
+            f"Video generation timed out after {max_attempts * poll_interval} seconds: {job_id}"
         )
 
     async def list_generations(self, limit: int = 20) -> List[VideoJob]:
-        """Son video oluşturma işlerini listeler."""
+        """List recent video generation jobs."""
         async with self._make_client() as client:
             response = await client.get("/videos", params={"limit": limit})
             self._raise_for_status(response)
@@ -137,7 +136,7 @@ class OpenRouterClient:
 
     @staticmethod
     def _raise_for_status(response: httpx.Response) -> None:
-        """HTTP hatalarını anlaşılır mesajlarla fırlatır."""
+        """Helper to raise clean exceptions with API details."""
         if response.is_success:
             return
 

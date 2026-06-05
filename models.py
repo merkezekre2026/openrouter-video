@@ -1,5 +1,5 @@
 """
-OpenRouter Video API - Pydantic modeller
+OpenRouter Video API - Pydantic Models
 """
 from __future__ import annotations
 from enum import Enum
@@ -33,63 +33,63 @@ class FrameType(str, Enum):
 
 
 class FrameImage(BaseModel):
-    url: str = Field(..., description="Kare görselinin URL'si veya base64 data URI")
-    frame_type: FrameType = Field(..., description="Başlangıç veya bitiş karesi")
+    url: str = Field(..., description="URL or base64 data URI of the frame image")
+    frame_type: FrameType = Field(..., description="Specifies if it is the first or last frame")
 
 
 class InputReference(BaseModel):
-    url: str = Field(..., description="Referans varlığın URL'si")
-    type: str = Field(default="image", description="Varlık tipi: image, audio, video")
+    url: str = Field(..., description="URL of the reference asset")
+    type: str = Field(default="image", description="Asset type: image, audio, or video")
 
 
 class VideoGenerationRequest(BaseModel):
     model: str = Field(
         default="google/veo-3.1-fast",
-        description="Video modeli ID'si",
+        description="ID of the video generation model",
     )
-    prompt: str = Field(..., description="Video açıklaması")
+    prompt: str = Field(..., description="Text description of the video to generate")
     aspect_ratio: Optional[AspectRatio] = Field(
         default=AspectRatio.LANDSCAPE,
-        description="En-boy oranı",
+        description="Aspect ratio for the video",
     )
     duration: Optional[int] = Field(
         default=None,
         ge=1,
         le=60,
-        description="Saniye cinsinden video süresi (1-60)",
+        description="Duration of the video in seconds (1-60)",
     )
     resolution: Optional[Resolution] = Field(
         default=None,
-        description="Video çözünürlüğü",
+        description="Desired resolution",
     )
     generate_audio: Optional[bool] = Field(
         default=False,
-        description="Ses oluşturulsun mu?",
+        description="Whether to generate audio alongside the video",
     )
     callback_url: Optional[str] = Field(
         default=None,
-        description="Tamamlandığında bildirim gönderilecek HTTPS webhook URL'si",
+        description="HTTPS webhook URL to receive status notifications",
     )
     frame_images: Optional[List[FrameImage]] = Field(
         default=None,
-        description="İlk/son kare görselleri (image-to-video için)",
+        description="First/last frame images for image-to-video tasks",
     )
     input_references: Optional[List[InputReference]] = Field(
         default=None,
-        description="Stil veya karakter tutarlılığı için referans varlıklar",
+        description="Reference assets for style or character consistency",
     )
 
 
 class VideoJob(BaseModel):
-    id: str = Field(..., description="İş ID'si")
-    status: VideoStatus = Field(..., description="Mevcut durum")
+    id: str = Field(..., description="Job ID")
+    status: VideoStatus = Field(..., description="Current status of the generation job")
     model: Optional[str] = None
     prompt: Optional[str] = None
     created_at: Optional[str] = None
     completed_at: Optional[str] = None
     unsigned_urls: Optional[List[str]] = Field(
         default=None,
-        description="Oluşturulan video URL'leri (completed durumunda)",
+        description="Generated video download URLs (available when status is completed)",
     )
     polling_url: Optional[str] = None
     error: Optional[str] = None
