@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: openrouter-video-mcp
+    runtime: python
+    plan: free          # Ücretsiz plan (starter da kullanılabilir)
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn server:app --host 0.0.0.0 --port $PORT --workers 2
+    healthCheckPath: /health
+    envVars:
+      - key: OPENROUTER_API_KEY
+        sync: false      # Render Dashboard'dan manuel girilecek (güvenlik)
+      - key: SITE_URL
+        sync: false      # Örn: https://openrouter-video-mcp.onrender.com
+      - key: SITE_NAME
+        value: OpenRouter Video MCP
+      - key: PYTHON_VERSION
+        value: "3.11.0"
