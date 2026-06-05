@@ -38,7 +38,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
-SITE_URL = os.environ.get("SITE_URL", "https://openrouter-video-mcp.onrender.com")
+SITE_URL = os.environ.get("SITE_URL", "")
 SITE_NAME = os.environ.get("SITE_NAME", "OpenRouter Video MCP")
 HOST = os.environ.get("HOST", "0.0.0.0")
 PORT = int(os.environ.get("PORT", "8000"))  # Render.com automatically binds PORT

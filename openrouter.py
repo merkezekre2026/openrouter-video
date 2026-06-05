@@ -39,9 +39,11 @@ class OpenRouterClient:
         self.headers = {
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
-            "HTTP-Referer": site_url or "https://openrouter-video-mcp.onrender.com",
-            "X-Title": site_name or "OpenRouter Video MCP",
         }
+        if site_url:
+            self.headers["HTTP-Referer"] = site_url
+        if site_name:
+            self.headers["X-Title"] = site_name
 
     def _make_client(self) -> httpx.AsyncClient:
         return httpx.AsyncClient(

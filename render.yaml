@@ -8,9 +8,7 @@ services:
     healthCheckPath: /health
     envVars:
       - key: OPENROUTER_API_KEY
-        sync: false      # Render Dashboard'dan manuel girilecek (güvenlik)
-      - key: SITE_URL
-        sync: false      # Örn: https://openrouter-video-mcp.onrender.com
+        sync: false      # Manually set in Render Dashboard (security)
       - key: SITE_NAME
         value: OpenRouter Video MCP
       - key: PYTHON_VERSION
